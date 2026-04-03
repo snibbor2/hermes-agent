@@ -555,13 +555,19 @@ class DiscordAdapter(BasePlatformAdapter):
                 # Bot message filtering (DISCORD_ALLOW_BOTS):
                 #   "none"     — ignore all other bots (default)
                 #   "mentions" — accept bot messages only when they @mention us
+                #   "name"     — accept bot messages that @mention us OR mention our name
                 #   "all"      — accept all bot messages
                 if getattr(message.author, "bot", False):
                     allow_bots = os.getenv("DISCORD_ALLOW_BOTS", "none").lower().strip()
                     if allow_bots == "none":
                         return
-                    elif allow_bots == "mentions":
-                        if not self._client.user or self._client.user not in message.mentions:
+                    elif allow_bots in ("mentions", "name"):
+                        _bot_at_mentioned = self._client.user and self._client.user in message.mentions
+                        _bot_name_in_msg = False
+                        if allow_bots == "name" and self._client.user:
+                            _bn = self._client.user.display_name or self._client.user.name
+                            _bot_name_in_msg = _bn.lower() in message.content.lower()
+                        if not _bot_at_mentioned and not _bot_name_in_msg:
                             return
                     # "all" falls through to handle_message
 
@@ -2011,8 +2017,18 @@ class DiscordAdapter(BasePlatformAdapter):
             # the bot has previously participated (auto-created or replied in).
             in_bot_thread = is_thread and thread_id in self._bot_participated_threads
 
+            # Check if the bot's name is mentioned by text (case-insensitive)
+            # Controlled by DISCORD_RESPOND_TO_NAME (default: false)
+            _respond_to_name = os.getenv(
+                "DISCORD_RESPOND_TO_NAME", "false"
+            ).lower() in ("true", "1", "yes")
+            _name_mentioned = False
+            if _respond_to_name and self._client.user:
+                _bot_name = self._client.user.display_name or self._client.user.name
+                _name_mentioned = _bot_name.lower() in message.content.lower()
+
             if require_mention and not is_free_channel and not in_bot_thread:
-                if self._client.user not in message.mentions:
+                if self._client.user not in message.mentions and not _name_mentioned:
                     return
 
             if self._client.user and self._client.user in message.mentions:
