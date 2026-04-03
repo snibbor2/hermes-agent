@@ -396,9 +396,16 @@ def _apply_channel_tool_restrictions(
     source,
 ) -> list:
     """Remove denied tools for a specific channel, if configured."""
-    if platform_key != "discord" or not source:
+    # Platforms in this blocklist have no channel/group concept — their chat_id
+    # is a sender address or system identifier, not a channel.
+    # MAINTENANCE: when adding a new Platform enum value, decide whether it
+    # belongs here.  Add it if it lacks channel semantics.
+    # Note: Platform.LOCAL maps to key "cli" via _platform_config_key, not "local".
+    if not source or platform_key in (
+        "cli", "homeassistant", "api_server", "webhook", "email", "sms",
+    ):
         return enabled_toolsets
-    restrictions = user_config.get("discord", {}).get("channel_tool_restrictions", {})
+    restrictions = user_config.get(platform_key, {}).get("channel_tool_restrictions", {})
     if not restrictions:
         return enabled_toolsets
     # Check both the direct channel and parent channel (for threads)
