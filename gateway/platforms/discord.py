@@ -1740,6 +1740,7 @@ class DiscordAdapter(BasePlatformAdapter):
             user_id=str(interaction.user.id),
             user_name=interaction.user.display_name,
             thread_id=thread_id,
+            chat_id_alt=str(interaction.channel_id),  # Parent channel for tool restrictions
         )
 
         event = MessageEvent(
@@ -2047,6 +2048,7 @@ class DiscordAdapter(BasePlatformAdapter):
                     is_thread = True
                     thread_id = str(thread.id)
                     auto_threaded_channel = thread
+                    parent_channel_id = str(message.channel.id)  # Parent for channel tool restrictions
                     self._track_thread(thread_id)
 
         # Determine message type
@@ -2100,6 +2102,7 @@ class DiscordAdapter(BasePlatformAdapter):
             user_name=message.author.display_name,
             thread_id=thread_id,
             chat_topic=chat_topic,
+            chat_id_alt=parent_channel_id,
         )
 
         # Build media URLs -- download image attachments to local cache so the

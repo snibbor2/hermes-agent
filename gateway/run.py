@@ -389,6 +389,31 @@ def _platform_config_key(platform: "Platform") -> str:
     return "cli" if platform == Platform.LOCAL else platform.value
 
 
+def _apply_channel_tool_restrictions(
+    enabled_toolsets: list,
+    user_config: dict,
+    platform_key: str,
+    source,
+) -> list:
+    """Remove denied tools for a specific channel, if configured."""
+    if platform_key != "discord" or not source:
+        return enabled_toolsets
+    restrictions = user_config.get("discord", {}).get("channel_tool_restrictions", {})
+    if not restrictions:
+        return enabled_toolsets
+    # Check both the direct channel and parent channel (for threads)
+    channel_ids = [source.chat_id]
+    if getattr(source, "chat_id_alt", None):
+        channel_ids.append(source.chat_id_alt)
+    deny = set()
+    for cid in channel_ids:
+        deny |= set(restrictions.get(str(cid), {}).get("deny", []))
+    if not deny:
+        return enabled_toolsets
+    logging.getLogger("gateway.run").debug("Channel %s: denied toolsets %s", channel_ids, deny)
+    return [t for t in enabled_toolsets if t not in deny]
+
+
 def _load_gateway_config() -> dict:
     """Load and parse ~/.hermes/config.yaml, returning {} on any error."""
     try:
@@ -3951,6 +3976,7 @@ class GatewayRunner:
 
             from hermes_cli.tools_config import _get_platform_tools
             enabled_toolsets = sorted(_get_platform_tools(user_config, platform_key))
+            enabled_toolsets = _apply_channel_tool_restrictions(enabled_toolsets, user_config, platform_key, source)
 
             pr = self._provider_routing
             max_iterations = int(os.getenv("HERMES_MAX_ITERATIONS", "90"))
@@ -5348,6 +5374,7 @@ class GatewayRunner:
 
         from hermes_cli.tools_config import _get_platform_tools
         enabled_toolsets = sorted(_get_platform_tools(user_config, platform_key))
+        enabled_toolsets = _apply_channel_tool_restrictions(enabled_toolsets, user_config, platform_key, source)
 
         # Apply tool preview length config (0 = no limit)
         try:
