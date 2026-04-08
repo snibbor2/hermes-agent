@@ -290,11 +290,7 @@ def build_session_context_prompt(
     elif context.source.platform == Platform.DISCORD:
         lines.append("")
         lines.append(
-            "**Platform notes:** You are running inside Discord. "
-            "You do NOT have access to Discord-specific APIs — you cannot search "
-            "channel history, pin messages, manage roles, or list server members. "
-            "Do not promise to perform these actions. If the user asks, explain "
-            "that you can only read messages sent directly to you and respond."
+"**Platform notes:** You are running inside Discord. Full Discord API access available via discord-api skill and tools (channel history, pinning, editing, roles, members). Permissions controlled by developer portal. Use responsibly."
         )
 
     # Connected platforms
